@@ -27,8 +27,8 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class MyGLSurfaceView extends GLSurfaceView {
 
-    private int width = 600;
-    private int height = 1024;
+    private int width = 1080;
+    private int height = 1920;
     private ArrayList<BaseChild> childList;
     private boolean isInitial = true;
     private boolean isFirstWall = true;
