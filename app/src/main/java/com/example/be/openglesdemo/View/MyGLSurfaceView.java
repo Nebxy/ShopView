@@ -16,6 +16,7 @@ import com.example.be.openglesdemo.Dot;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -29,7 +30,7 @@ public class MyGLSurfaceView extends GLSurfaceView {
 
     private int width = 600;
     private int height = 1024;
-    private ArrayList<BaseChild> childList;
+    private List<BaseChild> childList;
     private boolean isInitial = true;
     private boolean isFirstWall = true;
     //保存所有点的集合
@@ -38,12 +39,14 @@ public class MyGLSurfaceView extends GLSurfaceView {
     private Dot firstDot;
     private BaseChild checkedChild;
     private Paint mPaint;
+    //新增节点模式
+    private boolean addNodeMode = false;
 
     public ArrayList<Dot> getDots() {
         return dots;
     }
 
-    public ArrayList<BaseChild> getChildList() {
+    public List<BaseChild> getChildList() {
         return childList;
     }
 
@@ -92,7 +95,7 @@ public class MyGLSurfaceView extends GLSurfaceView {
                     //添加墙体元素，直到多边形头尾缝合
                     drawWall(x1, y1);
                 } else { //否则判断选择哪个元素
-                    ((Wall) childList.get(0)).checked = true;
+                    ((Wall) childList.get(2)).checked = true;
                 }
                 moving = true;
                 preX = (event.getX() * 2 / width) - 1;
@@ -120,10 +123,30 @@ public class MyGLSurfaceView extends GLSurfaceView {
             default:
                 break;
         }
-        invalidate();
         return true;
     }
 
+    /**
+     * 新增节点
+     */
+    public void addNode() {
+        addNodeMode = true;
+        int index = -1;
+        for (BaseChild child : childList) {
+            if (((Wall) child).checked) {
+                // 找到选中元素在数组中的索引
+                index = childList.indexOf(child);
+            }
+        }
+        if (index != -1) {
+            //新增节点的headdot
+            Dot newHeadDot = new Dot((((Wall) childList.get(index)).headDot.x + ((Wall) childList.get(index)).endDot.x) / 2, (((Wall) childList.get(index)).headDot.y + ((Wall) childList.get(index)).endDot.y) / 2);
+            Dot newEndDot = ((Wall) childList.get(index)).endDot;
+            ((Wall) childList.get(index)).endDot = newHeadDot;
+            // 插入元素
+            childList.add(index + 1, new Wall(newHeadDot, newEndDot));
+        }
+    }
 
 
     /**
@@ -148,6 +171,8 @@ public class MyGLSurfaceView extends GLSurfaceView {
             wall2.endDot.y = -0.5f;
             childList.add(wall);
             childList.add(wall2);*/
+            //同步集合
+            childList = Collections.synchronizedList(childList);
 
         }
 
@@ -155,7 +180,7 @@ public class MyGLSurfaceView extends GLSurfaceView {
         public void onSurfaceCreated(GL10 gl, EGLConfig config) {
             // 启用阴影平滑
             gl.glShadeModel(GL10.GL_SMOOTH);
-            // 灰色背景
+            // 白色背景
             gl.glClearColor(1f, 1f, 1f, 1f);
             // 设置深度缓存
             gl.glClearDepthf(1.0f);
@@ -164,9 +189,10 @@ public class MyGLSurfaceView extends GLSurfaceView {
             // 所作深度测试的类型
             gl.glDepthFunc(GL10.GL_LEQUAL);
             // 告诉系统对透视进行修正
-            gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_FASTEST);
-            gl.glLineWidth(5);
-
+            gl.glHint(GL10.GL_PERSPECTIVE_CORRECTION_HINT, GL10.GL_DONT_CARE);
+            gl.glLineWidth(10);
+            /*gl.glEnable(GL10.GL_LINE_SMOOTH);
+            gl.glHint(GL10.GL_LINE_SMOOTH,GL10.GL_DONT_CARE);*/
         }
 
         @Override
@@ -203,10 +229,15 @@ public class MyGLSurfaceView extends GLSurfaceView {
 
             // 设置黑色画笔
             gl.glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
-            //遍历所有元素并绘制
-            for (BaseChild child : childList) {
-                child.draw(gl);
+            try {
+                //遍历所有元素并绘制
+                for (BaseChild child : childList) {
+                    child.draw(gl);
+                }
+            } catch (Exception e) {
+                System.out.println("捕获并发修改异常");
             }
+
             gl.glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
             //设置旋转
             //gl.glRotatef(rotateQuad, 1.0f, 1.0f, 0.0f);
